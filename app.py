@@ -341,6 +341,6 @@ if stems_data:
     </html>
     """
     
-    components.html(tone_js_code, height=140 + (len(stems_data) * 180))
+    components.html(tone_js_code, height=140 + (len(stems_data) * 250))
 else:
     st.info("👈 Silakan upload file audio pada slot Track 1 di atas.")
