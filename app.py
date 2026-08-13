@@ -6,22 +6,33 @@ import streamlit.components.v1 as components
 st.set_page_config(layout="wide")
 st.title("🎛️ Multi-Stem Player dengan Waveform & Playhead (Tone.js)")
 
-# 1. Upload Audio
+# 1. Upload Audio (Dynamic Sequential Upload)
 st.subheader("1. Upload Stem Audio")
-cols = st.columns(4)
-default_names = ["Track 1 (Vocal)", "Track 2 (Drums)", "Track 3 (Bass)", "Track 4 (Other)"]
-stems_data = {}
 
-for i, col in enumerate(cols):
-    uploaded_file = col.file_uploader(
-        f"Upload {default_names[i]}", 
+stems_data = {}
+i = 0
+
+# Loop dinamis: Menampilkan slot upload baru persis di bawah slot yang sudah terisi
+while True:
+    uploaded_file = st.file_uploader(
+        f"Upload Track {i+1}", 
         type=["mp3", "wav", "ogg", "flac"], 
         key=f"uploader_{i}"
     )
+    
     if uploaded_file is not None:
-        track_name = default_names[i]
-        b64_str = base64.b64encode(uploaded_file.read()).decode()
-        stems_data[track_name] = f"data:{uploaded_file.type};base64,{b64_str}"
+        bytes_data = uploaded_file.read()
+        b64_str = base64.b64encode(bytes_data).decode()
+        mime_type = uploaded_file.type if uploaded_file.type else "audio/mp3"
+        
+        # Menggunakan nama asli file yang diupload sebagai nama track
+        track_name = f"Track {i+1}: {uploaded_file.name}"
+        stems_data[track_name] = f"data:{mime_type};base64,{b64_str}"
+        
+        i += 1
+    else:
+        # Hentikan loop pada slot kosong pertama
+        break
 
 # 2. Mixer Controls Component dengan Waveform Canvas & Playhead
 if stems_data:
@@ -178,7 +189,6 @@ if stems_data:
       const container = document.getElementById('stemsContainer');
       let maxDuration = 0;
 
-      // Render UI Komponen per Track
       Object.keys(stemSources).forEach(trackName => {{
         const channel = new Tone.Channel({{ volume: 0, mute: false, solo: false }}).toDestination();
         const player = new Tone.Player(stemSources[trackName]).connect(channel);
@@ -208,7 +218,6 @@ if stems_data:
         `;
         container.appendChild(card);
 
-        // Click on Waveform to Seek (Pindah Detik)
         const wrapper = document.getElementById(`wrap-${{trackName}}`);
         wrapper.onclick = (e) => {{
           if (maxDuration > 0) {{
@@ -220,14 +229,12 @@ if stems_data:
           }}
         }};
 
-        // Event Volume Slider
         document.getElementById(`vol-${{trackName}}`).oninput = (e) => {{
           const val = parseFloat(e.target.value);
           channels[trackName].volume.value = val;
           document.getElementById(`val-${{trackName}}`).innerText = (val > 0 ? "+" : "") + val + " dB";
         }};
 
-        // Event Mute & Solo
         document.getElementById(`mute-${{trackName}}`).onclick = (e) => {{
           channels[trackName].mute = !channels[trackName].mute;
           e.target.classList.toggle('active-mute', channels[trackName].mute);
@@ -239,7 +246,6 @@ if stems_data:
         }};
       }});
 
-      // Render Waveform Canvas dari Audio Buffer
       function drawWaveform(player, canvas) {{
         const ctx = canvas.getContext('2d');
         const buffer = player.buffer.get();
@@ -265,7 +271,6 @@ if stems_data:
         }}
       }}
 
-      // Format Waktu MM:SS
       function formatTime(seconds) {{
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
@@ -279,7 +284,6 @@ if stems_data:
         }});
       }}
 
-      // Inisialisasi setelah semua buffer loaded
       Tone.loaded().then(() => {{
         let maxDur = 0;
         Object.keys(players).forEach(name => {{
@@ -301,7 +305,6 @@ if stems_data:
         document.getElementById('timeDisplay').innerText = `00:00 / ${{formatTime(maxDuration)}}`;
       }});
 
-      // Loop Animasi Playhead secara Real-time
       function renderLoop() {{
         if (Tone.Transport.state === 'started' && maxDuration > 0) {{
           const curTime = Tone.Transport.seconds;
@@ -313,7 +316,6 @@ if stems_data:
       }}
       requestAnimationFrame(renderLoop);
 
-      // Transport Control
       const playBtn = document.getElementById('playBtn');
       playBtn.onclick = async () => {{
         await Tone.start();
@@ -339,7 +341,6 @@ if stems_data:
     </html>
     """
     
-    # Penyesuaian tinggi iframe untuk waveform + slider + tombol
     components.html(tone_js_code, height=140 + (len(stems_data) * 180))
 else:
-    st.info("👈 Silakan upload file audio di minimal satu slot track di atas.")
+    st.info("👈 Silakan upload file audio pada slot Track 1 di atas.")
